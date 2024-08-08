@@ -1,0 +1,75 @@
+
+
+Title 4-
+Enhancing the INSAT style clouds in pic pluse using principal component analysis algorithm over locally linear embedding. 
+
+
+import os
+import imageio
+import numpy as np
+from skimage import color
+from sklearn.decomposition import PCA
+from sklearn.manifold import LocallyLinearEmbedding
+from sklearn.metrics import mean_squared_error
+
+input_folder = r'D:\project core\original data sets'
+output_folder_pca = r'D:\project core\reduced_output_pca'
+output_folder_lle = r'D:\project core\reduced_output_lle'
+target_size = (2296, 1724)  # Target size for resized images
+
+# Ensure the output directories exist, create them if not
+os.makedirs(output_folder_pca, exist_ok=True)
+os.makedirs(output_folder_lle, exist_ok=True)
+
+def load_images(file_paths):
+    return np.array([imageio.imread(path) for path in file_paths])
+
+def flatten_images(images):
+    return images.reshape(images.shape[0], -1)
+
+def reduce_dimensionality(method, data, n_components):
+    if method == 'pca':
+        model = PCA(n_components=n_components)
+    elif method == 'lle':
+        model = LocallyLinearEmbedding(n_neighbors=10, n_components=n_components)
+
+    reduced_data = model.fit_transform(data)
+    reconstructed_data = model.inverse_transform(reduced_data)
+
+    return reconstructed_data
+
+def evaluate_accuracy(original_data, reconstructed_data):
+    mse = mean_squared_error(original_data, reconstructed_data)
+    return mse
+
+# Process each image in the input folder
+for filename in os.listdir(input_folder):
+    if filename.endswith('.jpg') or filename.endswith('.png'):  # Add more file extensions if needed
+        # Load the original image
+        image_path = os.path.join(input_folder, filename)
+        original_image = imageio.imread(image_path)
+        original_gray = color.rgb2gray(original_image)  # Convert to grayscale for simplicity
+
+        # Flatten the original image
+        flattened_original = flatten_images(original_gray)
+
+        # Reduce dimensionality using PCA
+        reconstructed_pca = reduce_dimensionality('pca', flattened_original, n_components=50)  # Adjust components
+
+        # Save the PCA result
+        output_path_pca = os.path.join(output_folder_pca, filename)
+        imageio.imsave(output_path_pca, reconstructed_pca.reshape(original_gray.shape))
+
+        # Reduce dimensionality using LLE
+        reconstructed_lle = reduce_dimensionality('lle', flattened_original, n_components=2)  # Adjust components
+
+        # Save the LLE result
+        output_path_lle = os.path.join(output_folder_lle, filename)
+        imageio.imsave(output_path_lle, reconstructed_lle.reshape(original_gray.shape))
+
+        # Evaluate and print the accuracy
+        mse_pca = evaluate_accuracy(flattened_original, reconstructed_pca)
+        mse_lle = evaluate_accuracy(flattened_original, reconstructed_lle)
+        
+        print(f'Mean Squared Error (PCA) for {filename}: {mse_pca}')
+        print(f'Mean Squared Error (LLE) for {filename}: {mse_lle}')
