@@ -1,0 +1,66 @@
+import os
+import imageio
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
+from skimage import color, transform
+
+input_folder = r'D:\project core\original data sets'
+output_folder_pca = r'D:\project core\reduced_output_pca'
+output_folder_tsne = r'D:\project core\reduced_output_tsne'
+target_size = (2296, 1724)  # Target size for resized images
+
+# Ensure the output directories exist, create them if not
+os.makedirs(output_folder_pca, exist_ok=True)
+os.makedirs(output_folder_tsne, exist_ok=True)
+
+def load_images(file_paths):
+    return np.array([imageio.imread(path) for path in file_paths])
+
+def flatten_images(images):
+    return images.reshape(images.shape[0], -1)
+
+def reduce_dimensionality_pca(data, n_components):
+    model = PCA(n_components=n_components)
+    reduced_data = model.fit_transform(data)
+    reconstructed_data = model.inverse_transform(reduced_data)
+    return reconstructed_data
+
+def reduce_dimensionality_tsne(data, n_components):
+    model = TSNE(n_components=n_components)
+    reduced_data = model.fit_transform(data)
+    return reduced_data
+
+# Process each image in the input folder
+for filename in os.listdir(input_folder):
+    if filename.endswith('.jpg') or filename.endswith('.png'):  # Add more file extensions if needed
+        # Load the original image
+        image_path = os.path.join(input_folder, filename)
+        original_image = imageio.imread(image_path)
+
+        # Resize the original image to the target size
+        resized_original = transform.resize(original_image, target_size, mode='reflect', anti_aliasing=True)
+
+        # Flatten the resized image for PCA
+        flattened_resized = flatten_images(resized_original)
+
+        # Reduce dimensionality using PCA
+        reconstructed_pca = reduce_dimensionality_pca(flattened_resized, n_components=50)  # Adjust components
+
+        # Save the PCA result
+        output_path_pca = os.path.join(output_folder_pca, filename)
+        imageio.imsave(output_path_pca, reconstructed_pca.reshape(resized_original.shape))
+
+        # Reduce dimensionality using t-SNE
+        reduced_tsne = reduce_dimensionality_tsne(flattened_resized, n_components=2)  # Adjust components
+
+        # Save the t-SNE result
+        output_path_tsne = os.path.join(output_folder_tsne, filename)
+        plt.scatter(reduced_tsne[:, 0], reduced_tsne[:, 1])
+        plt.savefig(output_path_tsne)
+        plt.close()
+
+# Visualize t-SNE results (optional)
+# You can visualize the t-SNE results in the output_folder_tsne using scatter plots.
+# This will create separate scatter plots for each image.
